@@ -1,0 +1,12 @@
+{
+  "id": "crypto",
+  "role": "tape",
+  "kind": "coingecko",
+  "enabled": true,
+  "ids": [
+    "bitcoin",
+    "ethereum",
+    "solana"
+  ],
+  "vs": "usd"
+}

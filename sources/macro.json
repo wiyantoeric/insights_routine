@@ -1,0 +1,13 @@
+{
+  "id": "macro",
+  "role": "tape",
+  "kind": "fred",
+  "enabled": false,
+  "_note": "Needs FRED_API_KEY in .env. Free at fred.stlouisfed.org.",
+  "api_key_env": "FRED_API_KEY",
+  "series": {
+    "CPIAUCSL": "US CPI",
+    "DFF": "Fed funds rate",
+    "T10Y2Y": "10Y-2Y spread"
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "id": "pwc",
+  "name": "PwC",
+  "role": "content",
+  "kind": "sitemap",
+  "enabled": true,
+  "index": "https://www.pwc.com/sitemap.xml",
+  "child_match": [
+    "/gx/en/",
+    "/us/en/",
+    "/id/en/",
+    "/sg/en/"
+  ],
+  "include_path": [
+    "/library",
+    "/research-insights",
+    "/issues/",
+    "/press-room"
+  ],
+  "exclude_path": [
+    "/careers",
+    "/about/",
+    "/services/",
+    "/alumni"
+  ],
+  "max_urls": 400
+}

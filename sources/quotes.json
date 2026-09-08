@@ -1,0 +1,20 @@
+{
+  "id": "quotes",
+  "role": "tape",
+  "kind": "yahoo",
+  "enabled": true,
+  "_note": "Yahoo tickers. z-score over range; alert when |z| >= alert_sigma.",
+  "symbols": {
+    "^GSPC": "S&P 500",
+    "^IXIC": "Nasdaq",
+    "^JKSE": "IDX Composite",
+    "IDR=X": "USD/IDR",
+    "^TNX": "US 10Y yield",
+    "DX-Y.NYB": "Dollar index",
+    "GC=F": "Gold",
+    "CL=F": "WTI crude"
+  },
+  "range": "1mo",
+  "interval": "1d",
+  "alert_sigma": 2.0
+}

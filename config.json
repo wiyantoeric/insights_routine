@@ -1,0 +1,108 @@
+{
+  "_about": "Single source of truth for run behaviour. Content and market sources live in sources/*.json (see docs/SOURCES.md). Change behaviour here, not in code or prompts.",
+  "run": {
+    "cadence": "daily",
+    "timezone": "Asia/Jakarta",
+    "lookback_days": 3,
+    "max_items_per_digest": 5,
+    "max_candidates_to_agent": 40,
+    "max_agent_fetches": 12
+  },
+  "paths": {
+    "seen": "state/seen.json",
+    "candidates": "state/candidates.json",
+    "raw_dir": "state/raw",
+    "digest_dir": "digests",
+    "vault_dir": "vaults"
+  },
+  "focus": {
+    "_note": "geo is a scoring boost, NOT a hard filter. Global themes still qualify.",
+    "hard_geo_filter": false,
+    "themes": [
+      "AI adoption, agentic AI, AI governance and risk",
+      "digital transformation, automation, data platforms",
+      "banking, payments, fintech, capital markets",
+      "financial regulation and compliance deadlines",
+      "macro: inflation, rates, currency, commodity cycles"
+    ],
+    "geo_boost": [
+      "Indonesia",
+      "Southeast Asia",
+      "ASEAN",
+      "Singapore",
+      "Malaysia",
+      "Vietnam",
+      "Thailand"
+    ],
+    "lenses": [
+      "service_demand",
+      "product_idea",
+      "market_intel"
+    ],
+    "mute_terms": [
+      "award",
+      "appointment",
+      "sponsorship",
+      "webinar replay",
+      "hiring",
+      "office opening"
+    ]
+  },
+  "scoring": {
+    "_note": "Each dimension 0-5. Composite = sum of weight*score. See docs/OPPORTUNITIES.md for the rubric.",
+    "dimensions": {
+      "actionability": 3,
+      "urgency": 2,
+      "monetizability": 2,
+      "geo_relevance": 1,
+      "confidence": 2,
+      "novelty": 2
+    },
+    "min_score_to_publish": 40,
+    "max_score": 60
+  },
+  "delivery": {
+    "telegram": {
+      "enabled": true,
+      "token_env": "TELEGRAM_BOT_TOKEN",
+      "chat_id_env": "TELEGRAM_CHAT_ID",
+      "parse_mode": "Markdown",
+      "max_chars": 3800
+    },
+    "vault": {
+      "enabled": true,
+      "subfolder_by_month": true
+    },
+    "digest_archive": {
+      "enabled": true
+    }
+  },
+  "agent": {
+    "prompt_file": "prompts/daily_scan.md",
+    "allowed_tools": [
+      "Read",
+      "Write",
+      "WebFetch",
+      "Bash(python3 scripts/*)"
+    ],
+    "fail_on_zero_candidates": false,
+    "context_pages": [
+      {
+        "id": "kpmg_reports",
+        "url": "https://kpmg.com/ee/en/insights/2025/03/kpmg-global-reports.html",
+        "note": "global reports hub, JS-rendered"
+      },
+      {
+        "id": "deloitte_insights",
+        "url": "https://www.deloitte.com/us/en/insights.html",
+        "note": "Deloitte Insights landing"
+      },
+      {
+        "id": "pwc_library",
+        "url": "https://www.pwc.com/us/en/library.html",
+        "note": "PwC library landing"
+      }
+    ],
+    "_note_context_pages": "JS-heavy landing pages the agent may WebFetch for context. Not ingestion; ingestion is sources/."
+  }
+}

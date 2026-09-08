@@ -1,0 +1,13 @@
+# secrets
+.env
+
+# ide
+__pycache__/
+*.pyc
+.DS_Store
+digests/
+vaults/
+state/
+
+# debugs
+*.log

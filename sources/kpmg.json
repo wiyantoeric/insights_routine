@@ -1,0 +1,27 @@
+{
+  "id": "kpmg",
+  "name": "KPMG",
+  "role": "content",
+  "kind": "sitemap",
+  "enabled": true,
+  "index": "https://kpmg.com/sitemap-index.xml",
+  "child_match": [
+    "/xx/en/",
+    "/id/en/",
+    "/sg/en/",
+    "/uk/en/",
+    "/us/en/"
+  ],
+  "include_path": [
+    "/insights/",
+    "/blogs/",
+    "/media/press-releases/"
+  ],
+  "exclude_path": [
+    "/careers/",
+    "/events/",
+    "/about/",
+    "/people/"
+  ],
+  "max_urls": 400
+}

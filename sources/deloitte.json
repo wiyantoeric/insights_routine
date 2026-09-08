@@ -1,0 +1,28 @@
+{
+  "id": "deloitte",
+  "name": "Deloitte",
+  "role": "content",
+  "kind": "sitemap",
+  "enabled": true,
+  "_note": "Deloitte sitemap index has NO sea/id/sg/my/th shard. SEA content surfaces under global. Verified 2026-09-05.",
+  "index": "https://www.deloitte.com/sitemap_index.xml",
+  "child_match": [
+    "sitemap_global_en",
+    "sitemap_us_en",
+    "sitemap_uk_en",
+    "sitemap_in_en"
+  ],
+  "include_path": [
+    "/insights/",
+    "/perspectives/",
+    "/research/",
+    "/about/press-room/"
+  ],
+  "exclude_path": [
+    "/careers/",
+    "/events/",
+    "/services/",
+    "/our-people/"
+  ],
+  "max_urls": 400
+}
