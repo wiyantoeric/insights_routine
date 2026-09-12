@@ -1,3 +1,11 @@
 import { sveltekit } from '@sveltejs/kit/vite';
 
-export default { plugins: [sveltekit()], server: { host: '127.0.0.1' } };
+const host = process.env.VITE_HOST || '127.0.0.1';
+
+const allowedHosts = ['.ts.net'];
+
+export default {
+	plugins: [sveltekit()],
+	server: { host, allowedHosts },
+	preview: { host, allowedHosts }
+};

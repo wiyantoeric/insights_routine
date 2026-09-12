@@ -2,7 +2,7 @@
 /** Asserts for the markdown the digests contain. Run by `npm run check`. */
 import assert from 'node:assert';
 import { readFileSync } from 'node:fs';
-import { md, mdDoc } from '../src/lib/md.js';
+import { isHttp, md, mdDoc } from '../src/lib/md.js';
 
 // escaping comes before markup, always
 assert.equal(md('<script>x</script>'), '&lt;script&gt;x&lt;/script&gt;');
@@ -52,3 +52,16 @@ assert.equal(md('array[^foo] is not a marker'), 'array[^foo] is not a marker');
 const dashed = JSON.parse(readFileSync(new URL('../../digests/2026-09-08.json', import.meta.url)));
 assert.ok(typeof dashed.tape.line === 'object', 'tape.line is one entry per asset');
 assert.ok('line_remark' in dashed.tape, 'tape carries line_remark');
+
+// only an absolute http(s) url may become a link. A repo path rendered as an
+// anchor made the prerenderer crawl it, 404, and fail the build (2026-09-12).
+assert.ok(isHttp('https://kpmg.com/x') && isHttp('http://x.test'));
+for (const notUrl of [
+	'state/candidates.json → tape',
+	'sources/quotes.json',
+	'digests/2026-09-12-am.md and digests/2026-09-08.md through digests/2026-09-11.md',
+	'',
+	null
+]) {
+	assert.ok(!isHttp(notUrl), `must not link: ${notUrl}`);
+}

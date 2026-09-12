@@ -122,6 +122,10 @@ copied from it, never re-derived.
 
 - `sources` is a list. Items routinely carry more than one URL; a single-URL
   field drops claims.
+- `sources[].url` is an absolute `http://` or `https://` url and nothing else.
+  A repo path, a filename, or a sentence describing where you looked is not a
+  url. Those belong in the prose or in `run_notes`. The reader shows a non-url
+  source in the alert colour and refuses to link it.
 - `tape.readings` is the `tape` block from `state/candidates.json`, copied
   verbatim. `null` when the digest was written without it to hand.
 - `items` is empty on a zero-item day. `watchlist` and `run_notes` still carry.

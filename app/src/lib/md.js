@@ -36,6 +36,13 @@ export function md(text, refBase) {
 		);
 }
 
+/**
+ * Only an absolute http(s) url may become a link. The agent sometimes puts a
+ * repo path or a sentence where a url belongs; rendering that as an anchor made
+ * the prerenderer crawl it, 404, and fail the whole build.
+ */
+export const isHttp = (u) => /^https?:\/\//i.test(String(u ?? ''));
+
 const cells = (row) =>
 	row
 		.trim()

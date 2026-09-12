@@ -167,16 +167,22 @@ mkdirSync(OUT, { recursive: true });
 for (const [name, data] of Object.entries({ digests, index, rows, topics, tape, meta }))
 	writeFileSync(join(OUT, `${name}.json`), JSON.stringify(data));
 
+const unlinkable = digests.flatMap((d) =>
+	[...d.items, ...d.watchlist].flatMap((r) =>
+		(r.sources ?? []).map((s) => s.url).filter((u) => u && !/^https?:\/\//i.test(u))
+	)
+);
 const bad = index.filter((d) => !d.parse_ok);
 const noTopics = index.filter((d) => d.parse_ok && d.topics.length === 0).map((d) => d.date);
 console.error(
-	`collect: ${digests.length} digests, ${rows.length} searchable rows, ${topics.length} topics` +
+	`collect: ${digests.length} digests from ${DIGESTS}, ${rows.length} searchable rows, ${topics.length} topics` +
 		(bad.length ? `, ${bad.length} BROKEN: ${bad.map((d) => `${d.date} (${d.reason})`).join('; ')}` : '') +
-		(noTopics.length ? `, no topics declared: ${noTopics.join(', ')}` : '')
+		(noTopics.length ? `, no topics declared: ${noTopics.join(', ')}` : '') +
+		(unlinkable.length ? `, ${unlinkable.length} source(s) are not urls: ${unlinkable[0].slice(0, 60)}…` : '')
 );
 
 if (process.argv.includes('--check')) {
-	assert(digests.length > 0, 'no digests found — is the routine writing json?');
+	assert(digests.length > 0, `no digests found in ${DIGESTS} — is the routine writing json there?`);
 	assert(bad.length === 0, `broken digests: ${bad.map((d) => d.date).join(', ')}`);
 	assert(rows.length >= digests.length, 'every digest should contribute at least one row');
 	assert(

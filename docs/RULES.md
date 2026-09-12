@@ -9,8 +9,10 @@ Violating any of these makes the run a failure even if it produced output.
    needed but absent, write `not stated`, never estimate. When both digest
    formats are written, the json carries the markdown's numbers verbatim. Two
    formats, one set of numbers.
-2. **Every claim carries a URL.** Either inline, `[claim] ([source](url))`, or
-   by footnote: `[^1]` points at the first entry in that item's `sources` list.
+2. **Every claim carries a URL.** An absolute `http(s)` url, not a repo path and
+   not a description of where you looked. Either inline,
+   `[claim] ([source](url))`, or by footnote: `[^1]` points at the first entry
+   in that item's `sources` list.
    Prefer the footnote when the same source carries several claims; a paragraph
    should not be three-quarters url.
 3. **Distinguish report-claim from fact.** Consulting firms publish marketing.

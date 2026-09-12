@@ -60,6 +60,9 @@ docs/WORKFLOWS.md § Writing the long fields. The short version:
 - Cite with `[^1]`, which points at the first entry in that item's `sources`
   list. Use a full inline link only when the link text is the thing being named.
   A paragraph should not be three-quarters url.
+- Every `sources[].url` is an absolute `http(s)` url. If the evidence is a file
+  in this repo, say so in the prose or in `run_notes`; do not put the path in a
+  `sources` entry.
 - Backticks for file names, config keys and field names.
 - No em dashes. Hard rule. Comma, colon, semicolon, or a new sentence.
 

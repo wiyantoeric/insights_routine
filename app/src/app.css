@@ -574,6 +574,10 @@ ol.sources li:target {
 ol.sources a {
 	color: var(--ink-2);
 }
+/* a source the agent wrote as a path or a sentence. Shown, never linked. */
+ol.sources .not-a-url {
+	color: var(--alert);
+}
 
 sup.fn {
 	font: 600 0.68em/1 var(--font-head);

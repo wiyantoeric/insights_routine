@@ -192,5 +192,15 @@ the verified URLs and re-probe `robots.txt` on the firm's domain.
 chunk as plain text automatically. If it still fails, the token or chat id is
 wrong; `scripts/chat.sh "hi"` isolates that.
 
+**Fresh box: `npm run check` says "no digests found", the site is empty.**
+`digests/` is gitignored, so a clone carries none. The site is a projection of
+digests, not a source of them — run `./scripts/run.sh` (or `rsync` digests over)
+and rebuild. The build itself no longer fails on an empty box; the dynamic
+routes just generate nothing.
+
+**`node build/index.js` says MODULE_NOT_FOUND.** There is no server. The
+adapter is `adapter-static`, so `app/build/` is plain html — point nginx at it,
+or `cd app/build && python3 -m http.server 8080`.
+
 **Agent run costs too much.** Lower `run.max_agent_fetches` and
 `run.max_candidates_to_agent` in config. Yesterday's run was ~30 turns.

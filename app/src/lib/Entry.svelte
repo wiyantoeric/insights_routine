@@ -1,6 +1,6 @@
 <script>
 	import Score from './Score.svelte';
-	import { md, mdDoc } from './md.js';
+	import { md, mdDoc, isHttp } from './md.js';
 
 	let { item, date = null, href = null } = $props();
 	const ref = $derived(`item-${item.ord}`);
@@ -42,7 +42,11 @@
 			<ol class="sources">
 				{#each item.sources as s, n}
 					<li id="{ref}-s{n + 1}">
-						<a href={s.url} rel="noreferrer">{s.url}</a>{#if s.published} · {s.published}{/if}
+						{#if isHttp(s.url)}
+							<a href={s.url} rel="noreferrer">{s.url}</a>
+						{:else}
+							<span class="not-a-url">{s.url}</span>
+						{/if}{#if s.published} · {s.published}{/if}
 					</li>
 				{/each}
 			</ol>

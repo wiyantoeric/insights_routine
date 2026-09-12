@@ -7,6 +7,8 @@ export default {
 	preprocess: vitePreprocess(),
 	kit: {
 		adapter: adapter({ pages: 'build', assets: 'build', fallback: null, strict: true }),
-		prerender: { handleHttpError: 'fail' }
+		// a fresh box has no digests yet, so the dynamic routes generate zero
+		// entries. That is an empty site, not a broken build.
+		prerender: { handleHttpError: 'fail', handleUnseenRoutes: 'warn' }
 	}
 };
