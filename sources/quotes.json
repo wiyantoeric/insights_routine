@@ -3,7 +3,7 @@
   "role": "tape",
   "kind": "yahoo",
   "enabled": true,
-  "_note": "Yahoo tickers. z-score over range; alert when |z| >= alert_sigma.",
+  "_note": "Yahoo tickers. z-score over range; alert when |z| >= alert_sigma. Every symbol here lands in the daily tape line, so each one costs reading attention: add only what changes a decision.",
   "symbols": {
     "^GSPC": "S&P 500",
     "^IXIC": "Nasdaq",
@@ -12,7 +12,13 @@
     "^TNX": "US 10Y yield",
     "DX-Y.NYB": "Dollar index",
     "GC=F": "Gold",
-    "CL=F": "WTI crude"
+    "CL=F": "WTI crude",
+    "^SOX": "PHLX Semiconductor",
+    "^STI": "STI Singapore",
+    "^N225": "Nikkei 225",
+    "^HSI": "Hang Seng",
+    "^VIX": "VIX",
+    "^TYX": "US 30Y yield"
   },
   "range": "1mo",
   "interval": "1d",

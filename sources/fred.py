@@ -16,5 +16,8 @@ def fetch(spec, ctx):
             out[sid] = {"label": label, "value": obs[0]["value"], "date": obs[0]["date"],
                         "prev": obs[1]["value"] if len(obs) > 1 else None}
         except Exception as e:
-            errors.append({"source": spec["id"], "series": sid, "error": str(e)})
+            # the key rides in the query string, so an exception quoting the url
+            # would carry it into candidates.json and anything downstream of it
+            errors.append({"source": spec["id"], "series": sid,
+                           "error": str(e).replace(key, "***")})
     return out, errors

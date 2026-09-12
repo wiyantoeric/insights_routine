@@ -66,7 +66,7 @@ serves three firms today.
 | `deloitte.json` | content | sitemap | global, us, uk, in shards. **No SEA shard exists** |
 | `pwc.json` | content | sitemap | gx, us, id, sg shards |
 | `crypto.json` + `coingecko.py` | tape | coingecko | BTC ETH SOL, USD, 24h change |
-| `quotes.json` + `yahoo.py` | tape | yahoo | 8 tickers, 1d change, z-score, alert flag |
+| `quotes.json` + `yahoo.py` | tape | yahoo | 14 tickers, 1d change, z-score, alert flag |
 | `macro.json` + `fred.py` | tape | fred | **disabled** until `FRED_API_KEY` is in `.env` |
 
 Ingestion is hybrid on purpose: sitemaps carry `lastmod`, which is all "what is
@@ -105,16 +105,50 @@ for the agent to WebFetch when an item needs context; they are not ingestion.
 |---|---|---|
 | coingecko | `api.coingecko.com/api/v3/simple/price` | free, no key, ~10-30 req/min, one call for all ids |
 | yahoo | `query1.finance.yahoo.com/v8/finance/chart/{sym}` | needs browser UA. `^JKSE` confirmed. `^TNX` reads the yield directly (4.78 = 4.78%) |
-| fred | `api.stlouisfed.org/fred/series/observations` | free key required |
+| fred | `api.stlouisfed.org/fred/series/observations` | free key required. The key is a query parameter, so `fred.py` redacts it out of any error text before it reaches `errors[]` |
 
 ## Candidate additions
 
 Not wired. One at a time, after the base loop is stable.
 
-- McKinsey, BCG, Bain, EY — sitemap kind, JSON only. Doubles cross-firm confirmation.
-- OJK, Bank Indonesia press rooms — probably a new `content` kind. The local regulatory-deadline feed, direct input to Lens A.
+### Probed and rejected, 2026-09-12
+
+Twelve domains checked against the `sitemap` kind. Do not re-probe these without
+a reason; the finding is that the kind has hit its limit, not that the list was
+wrong.
+
+| Candidate | Result | Verdict |
+|---|---|---|
+| McKinsey | `robots.txt` request timed out | off |
+| BCG, Bain, IMF, ADB, OECD, Gartner | HTTP 403 to a non-browser client, on `robots.txt` itself | off |
+| MAS Singapore | sitemap exists, 7,372 urls, **0% `lastmod`** | off, `collect()` skips undated urls |
+| BIS, Bank Indonesia | no `Sitemap:` line at all | off |
+| Accenture | index with 110 shards, none for insights: regions and job postings | off |
+| EY | clean index, `en_gl/sitemap/insights.xml`, 1,036 urls at 100% `lastmod` | **viable but low yield** |
+
+EY is the only mechanically sound one and its newest `lastmod` was 2026-08-21,
+twenty-two days stale against `run.lookback_days: 3`. It would contribute zero
+candidates on almost every run. Revisit if lookback ever grows.
+
+### Still open
+
+- `rss` kind, then the feeds below. RSS carries a real `pubDate`, which is
+  exactly what failed above, and it sidesteps the bulk-`lastmod` rewrite
+  problem Deloitte demonstrated on 2026-09-07.
+- Verified live with dated items, 2026-09-12: Tech in Asia
+  (`techinasia.com/feed`, 36 items), Stratechery (`stratechery.com/feed/`,
+  10 items), ECB press (`ecb.europa.eu/rss/press.html`, 15 items). Fed press
+  parses but exposes no date field; World Bank and ASEAN Briefing returned zero
+  items at the obvious paths.
+- Caution on the tech feeds: a consulting firm publishes because it is selling
+  into a topic, which is what makes publication volume a demand signal. A news
+  site publishes because it is Tuesday. Cap them hard and expect watchlist
+  entries, not scored items.
+- OJK, Bank Indonesia press rooms — the best Lens A sources that exist for this
+  operator, and the least machine-readable. Needs a scraped `content` kind.
 - IMF / World Bank / BIS — macro, and a non-vendor check on consulting claims.
-- ASEAN Briefing, Tech in Asia — the SEA lag signal in Lens D. Likely `rss` kind.
+  All three block or lack feeds at the obvious paths; FRED already covers the
+  series they would report.
 
 ## Failure log
 

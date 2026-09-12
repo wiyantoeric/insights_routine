@@ -69,7 +69,8 @@ def main():
         d = os.path.join(ROOT, c["paths"]["digest_dir"])
         files = sorted(f for f in os.listdir(d) if f.endswith(".md"))
         if not files:
-            sys.exit("no digest found in %s" % d)
+            sys.exit("no digest found in %s — is 'markdown' still in "
+                     "config.json delivery.digest_archive.formats?" % d)
         src = os.path.join(d, files[-1])
     with open(src) as f:
         body = f.read()

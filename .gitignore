@@ -11,3 +11,9 @@ state/
 
 # debugs
 *.log
+
+# frontend: deps, build output, and the data layer collect.mjs regenerates
+app/node_modules/
+app/build/
+app/.svelte-kit/
+app/src/lib/data/

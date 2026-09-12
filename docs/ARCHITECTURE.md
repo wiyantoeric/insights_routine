@@ -17,9 +17,15 @@ cron ──► scripts/run.sh
             ├─ 2. claude -p prompts/daily_scan.md       the agent, 3-6 min
             │       reads: config.json, docs/RULES.md, docs/OPPORTUNITIES.md, docs/WORKFLOWS.md, candidates.json
             │       does:  triage ──► WebFetch survivors ──► score ──► write
-            │       writes: digests/YYYY-MM-DD.md, <vault_dir>/YYYY-MM/YYYY-MM-DD.md, state/seen.json
+            │       writes: digests/YYYY-MM-DD.{md,json}, <vault_dir>/YYYY-MM/YYYY-MM-DD.md, state/seen.json
+            │              formats gated by delivery.digest_archive.formats
             │
-            └─ 3. python3 scripts/notify.py             chunk + POST to Telegram
+            ├─ 3. python3 scripts/notify.py             chunk + POST to Telegram
+            │
+            └─ 4. npm run build  (in web.dir)           static site, ~1s, optional
+                    app/scripts/collect.mjs reads digests/*.json ──► app/src/lib/data/
+                    SvelteKit prerenders one page per digest, topic and view ──► app/build/
+                    skipped unless web.build_on_run; failure warns, never fails the run
 
 core/        shared, reusable: http, sitemap, items, config, registry
 sources/     one file per source: <id>.json spec, optional <kind>.py implementation
@@ -41,12 +47,31 @@ config.json  run behaviour only. Not sources. Read by everything, written by not
 | Change scoring weights or the publish threshold | `config.json → scoring` | `OPPORTUNITIES.md` documents, config decides |
 | Change what the agent does step by step | `docs/WORKFLOWS.md` § W1, then `prompts/daily_scan.md` if the prompt must change | |
 | Change the digest layout | `docs/WORKFLOWS.md → Digest shape` | not the prompt |
+| Stop writing markdown or json digests | `config.json → delivery.digest_archive.formats` | not the prompt |
+| Change the sidecar json schema | `docs/WORKFLOWS.md → Sidecar JSON`, then `prompts/daily_scan.md` | not the reader |
+| Change what the site shows on a page | `app/src/routes/…` | |
+| Write or change any text on the site | `docs/ARCHITECTURE.md → Site copy`, then the route | |
+| Change how search matches or ranks | `app/src/lib/Results.svelte`; the field and shortcuts are `Finder.svelte` | not a route |
+| Change how digest markdown renders | `app/src/lib/md.js`: `md()` is inline only, `mdDoc()` adds blocks. Asserts in `app/scripts/md.check.mjs` | not the components |
+| Change how the agent writes the long fields | `docs/WORKFLOWS.md → Writing the long fields`, then `prompts/daily_scan.md` | not the renderer |
+| Change how a reference or footnote looks | `app/src/lib/md.js` for the marker, `Entry.svelte` for the numbered source list | |
+| Change the tape shape | `docs/WORKFLOWS.md → Sidecar JSON`, then `app/src/lib/Tape.svelte` | `collect.mjs` normalises the old string form |
+| Add a filter to the finder | `app/scripts/collect.mjs` to carry the field, then `Filters.svelte` | |
+| Change colours, type scale, or the visual rules | `DESIGN.md` first, then `app/src/app.css` | tokens, not literals |
+| Change the favicon | replace `app/static/favicon.jpg` | not an import; small files imported from `src/` get inlined as base64 into every page |
+| Add or restyle a colour theme | the `:root[data-theme='…']` blocks in `app/src/app.css`, then the swatch list in `app/src/lib/ThemeToggle.svelte` | |
+| Change what data reaches the site at all | `app/scripts/collect.mjs` | not the routes |
+| Change site colours, type, spacing | `app/src/app.css` | no framework. Fonts are tokens, `--font-body` and `--font-head` |
+| Swap a font | `@fontsource-variable/*` import in `app/src/routes/+layout.svelte`, then the token | not a CDN link; the site fetches nothing external |
+| Stop building the site on a run | `config.json → web.build_on_run` | |
+| Debug an empty or stale site | `cd app && npm run check` — asserts the sidecar contract and names broken digests | |
 | Add a hard rule for the agent | `docs/RULES.md` | |
 | Change lookback, item cap, fetch budget, candidate cap | `config.json → run` | |
-| Change theme / geography focus / mute terms | `config.json → focus` | |
+| Change topic / geography focus / mute terms | `config.json → focus` | |
 | Change output paths | `config.json → paths` | |
 | Add Slack or another push target | `scripts/notify.py`: branch on `a.platform`, read `delivery.<name>` | `chat.sh` needs nothing |
 | Change Telegram chunking | `config.json → delivery.telegram`; logic is `notify.py::chunks()` | |
+| Test a source kind without hitting its API | `tests/test_fred.py` is the pattern: stub `<kind>.get`, assert the reading shape, per-series isolation, and that no secret reaches `errors[]` | |
 | Debug why a URL was not picked up | `python3 scripts/fetch.py`, read `state/candidates.json`; check `lastmod` vs lookback, then path filters, then `seen.json`, then whether interleave cut it | |
 | Debug why the agent scored something a certain way | `claude -r <session-id>` (first line `run.sh` prints) | |
 | Force a full re-scan | empty `ids` in `state/seen.json` | |
@@ -77,9 +102,20 @@ A new source is a JSON file. A new *kind* of source is a Python file next to it.
 | `scripts/fetch.py` | source-agnostic ingestion loop + `interleave()`. `--demo` |
 | `scripts/notify.py` | Telegram. positional digest, `--text`, `--platform`. `--demo` |
 | `scripts/chat.sh` | delivery smoke test wrapper |
+| `tests/` | `unittest`, stdlib only. `test_fred.py` stubs the network; the live case runs only with a key present |
 | `state/seen.json` | `{"ids":[…]}` published URL hashes. Agent appends |
 | `state/candidates.json` | per-run payload: `candidates[]`, `tape{}`, `errors[]` |
-| `digests/`, `vaults/` | outputs. Gitignored |
+| `digests/` | outputs, one `.md` and one `.json` per run. Gitignored |
+| `vaults/` | Obsidian copy, markdown only. Gitignored |
+| `app/` | SvelteKit reader, `adapter-static`. Prerendered, read-only, optional |
+| `app/scripts/collect.mjs` | digests/*.json → `src/lib/data/{digests,index,rows,topics,tape,meta}.json`. `--check` asserts the contract |
+| `app/src/routes/` | `/` today · `/archive` · `/d/[date]` · `/topics` + `/topics/[slug]` · `/tape`. Search has no route: the finder is in the masthead everywhere |
+| `app/src/lib/` | `Digest`, `Entry`, `Tape`, `Finder`, `Filters`, `Results`, `Score`, `Icon`, `ThemeToggle`, `md.js`, `finder.svelte.js`. `data/` is generated, gitignored |
+| `app/scripts/md.check.mjs` | asserts for the renderer, including against the real 2026-09-08 run notes |
+| `PRODUCT.md` | who reads this, which jobs, what must not be renamed. Product truth, no visual decisions |
+| `DESIGN.md` | the visual world: palette, type, structure, the rules the interface holds to |
+| `app/static/` | files served at the site root, as-is. `favicon.jpg` today |
+| `app/build/` | static output. Gitignored |
 
 ### `core/` — reuse these
 
@@ -126,6 +162,23 @@ A new source is a JSON file. A new *kind* of source is a Python file next to it.
 - **Live progress for a headless run** — `run.sh` streams tool calls; session id first.
 - **macOS XProtect** — `run.sh` avoids the `exec > >(tee)` shape. See `docs/SOURCES.md` failure log.
 
+### Site copy
+
+Text on the site is written the way a digest is. The reader is one person who
+already knows what this repo does and does not need to be sold it.
+
+- State the fact and stop. No "importantly", "it's worth noting", "this matters".
+- No aside telling the reader what to notice. A sparkline showing one dot needs
+  the caption "seen once" and nothing after it.
+- Numbers and dates instead of adjectives. "13 entries from 2 digests", not
+  "entries indexed across every digest". Not "strong", when the label can say `45+`.
+- `·` separates, the way the tape lines do. Em dashes are not a rhythm device.
+- A colon introduces a list, a label, or a value. Never a reveal.
+- Say what failed, in the words of what failed: "2026-09-05 declared no topics".
+
+Same test the digests use: a line that could sit unchanged on some other
+product's page is filler. Cut it or replace it with a number.
+
 ### Not built, on purpose
 
 | Thing | Why not yet | Add when |
@@ -137,5 +190,9 @@ A new source is a JSON file. A new *kind* of source is a Python file next to it.
 | Slack / email delivery | Telegram chosen | someone else needs the feed |
 | More firms / regulators | base loop first | one at a time, JSON only for sitemap sites |
 | Retry queue for 403s | one so far | it repeats |
-| Tests beyond `--demo` | asserts cover the parsers, interleave, and registry resolution | logic outgrows one `demo()` |
+| Tests beyond `--demo`, `npm run check` and `tests/` | those cover the parsers, interleave, registry resolution, the sidecar contract, and the fred kind | logic outgrows them |
+| Auth on the site | it is localhost, or behind Cloudflare Access | it is served anywhere a stranger can reach |
+| Editing or annotating a digest from the site | the agent owns digests; a second writer means two sources of truth | never, unless the annotation lives outside `digests/` |
+| Tape charts with real numbers | `tape.readings` is null on the backfilled digests, so there is nothing to plot | a digest carries `readings`. The `Sparkline` component is already there |
+| A full markdown parser | `md.js` covers what the digest shape allows: links, bold, inline code, lists, tables, headings | `docs/WORKFLOWS.md` widens what a digest may contain |
 | Python deps, venv, uv | system 3.9 + stdlib suffices | stdlib stops being enough |

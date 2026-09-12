@@ -16,9 +16,9 @@
     "vault_dir": "vaults"
   },
   "focus": {
-    "_note": "geo is a scoring boost, NOT a hard filter. Global themes still qualify.",
+    "_note": "geo is a scoring boost, NOT a hard filter. Global topics still qualify.",
     "hard_geo_filter": false,
-    "themes": [
+    "topics": [
       "AI adoption, agentic AI, AI governance and risk",
       "digital transformation, automation, data platforms",
       "banking, payments, fintech, capital markets",
@@ -74,8 +74,18 @@
       "subfolder_by_month": true
     },
     "digest_archive": {
-      "enabled": true
+      "enabled": true,
+      "_note": "markdown feeds notify.py and the vault copy; json feeds app/. Drop markdown and Telegram plus vault have nothing to read. Drop json and the site goes stale.",
+      "formats": [
+        "markdown",
+        "json"
+      ]
     }
+  },
+  "web": {
+    "_note": "Static site built from the json sidecars in digests/. Needs node on the box. run.sh builds it after the push; set build_on_run false where node is absent, and on macOS where npm's network burst can trip XProtect.",
+    "build_on_run": true,
+    "dir": "app"
   },
   "agent": {
     "prompt_file": "prompts/daily_scan.md",

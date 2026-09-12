@@ -33,7 +33,10 @@ Not in `docs/`:
 | `core/` | Shared library: `http`, `sitemap`, `items`, `config`, `registry`. Reuse before writing |
 | `scripts/` | `run.sh` orchestrates, `fetch.py` runs every source, `notify.py` delivers, `chat.sh` tests delivery |
 | `state/` | `seen.json` dedup ledger, `candidates.json` per-run input, `run.log` |
-| `digests/` | One markdown file per run |
+| `digests/` | One markdown file per run, plus the json sidecar the site reads. `delivery.digest_archive.formats` decides which |
+| `app/` | The reader. SvelteKit, prerendered to static files from the json sidecars. Read-only: it never writes to the repo. Not needed for a run |
+| `PRODUCT.md` | Who reads the site, which jobs it serves, vocabulary that must not be renamed |
+| `DESIGN.md` | The site's visual world and the rules it holds to. Read before changing how anything looks |
 
 ## Read order for a daily run
 
@@ -52,7 +55,7 @@ One agent, three passes inside a single run. Do not spawn subagents — the
 candidate list is small and the cost is not worth it.
 
 1. **Triage** — read `state/candidates.json`. Kill anything matching
-   `focus.mute_terms` or obviously off-theme. Cheap, no fetches.
+   `focus.mute_terms` or obviously off-topic. Cheap, no fetches.
 2. **Deepen** — for surviving candidates only, WebFetch up to
    `run.max_agent_fetches` pages. Extract claims, numbers, dates.
 3. **Score & write** — apply the `docs/OPPORTUNITIES.md` rubric, keep the top

@@ -4,8 +4,9 @@ Daily opportunity scanner. Pulls what KPMG, Deloitte and PwC published in the
 last few days, pairs it with live market prices, scores every item against a
 written rubric, and pushes the top 3-5 to Telegram and an Obsidian vault.
 
-Runs locally as a Claude Code headless session on a cron schedule. No
-dependencies beyond macOS system Python, `jq`, and the `claude` CLI.
+Runs locally as a Claude Code headless session on a cron schedule. The routine
+needs nothing beyond system Python, `jq`, and the `claude` CLI. The optional
+web reader in `app/` is the only thing that wants Node, and only to build.
 
 ## Prerequisites
 
@@ -13,6 +14,7 @@ dependencies beyond macOS system Python, `jq`, and the `claude` CLI.
 - [Claude Code](https://claude.com/claude-code) CLI on `PATH`, logged in
 - A Telegram bot token and your chat id ([@BotFather](https://t.me/BotFather) for the token, [@userinfobot](https://t.me/userinfobot) for the id)
 - Optional: an Obsidian vault folder
+- Optional: Node 20+ if you want the web reader (`app/`). The routine itself never needs it
 
 ## Setup
 
@@ -47,9 +49,33 @@ Outputs:
 | What | Where |
 |---|---|
 | Digest | `digests/YYYY-MM-DD.md` |
+| The same digest as data | `digests/YYYY-MM-DD.json` — what the web reader reads |
 | Vault copy with frontmatter and wikilinks | `<paths.vault_dir>/YYYY-MM/YYYY-MM-DD.md` |
 | Dedup ledger | `state/seen.json` |
 | Raw input the agent saw | `state/candidates.json` |
+| Static site, when `web.build_on_run` is on | `app/build/` |
+
+### Read it in a browser
+
+```bash
+cd app && npm install     # first time only
+npm run dev               # http://127.0.0.1:5173
+```
+
+`npm run build` writes a static site to `app/build` — plain files, no server,
+serve them with anything, including `python3 -m http.server`. `npm run check`
+asserts the digest sidecars are well-formed and names any that are not.
+
+The home page is today's digest. Press `/` or `⌘K` anywhere to search every item
+and watchlist entry ever published, filtered by firm, lens, score band or topic;
+`Esc` clears it. `/archive` is the date index, `/topics` counts what recurs.
+
+Three colour themes, light, beige and dark, from the swatches at the right of the
+masthead. The choice is remembered in that browser; without one, the site
+follows the system setting.
+
+The site is a read-only projection of `digests/*.json`. Delete `app/` and the
+routine is unaffected; delete the site's data and `npm run build` rebuilds it.
 
 Send that digest to Telegram by hand to see how it reads on a phone:
 
@@ -59,7 +85,8 @@ scripts/chat.sh --platform telegram --file digests/$(date +%F).md
 
 ## Deploy on a VPS
 
-Any Linux box with `python3` ≥ 3.9, `jq`, and Node for the `claude` CLI.
+Any Linux box with `python3` ≥ 3.9, `jq`, and Node for the `claude` CLI. The
+same Node builds the web reader, which is why `web.build_on_run` defaults on.
 
 ```bash
 sudo apt install -y jq python3 git
@@ -97,6 +124,8 @@ a git remote), or point `paths.vault_dir` at a mounted share.
 ```bash
 python3 scripts/fetch.py                       # ingestion only, inspect state/candidates.json
 python3 scripts/fetch.py --demo                # parser + source registry self-check
+(cd app && npm run check)                      # sidecar contract + markdown renderer self-checks
+python3 -m unittest discover -s tests          # source-kind tests; the fred live case needs a key
 python3 scripts/notify.py                      # push newest digest
 scripts/chat.sh --platform telegram "text"     # push arbitrary text
 scripts/chat.sh --platform telegram --file f   # push any markdown file
@@ -113,9 +142,11 @@ Every knob is in `config.json`. The ones you will actually touch:
 | `run.lookback_days` | How far back "new" reaches. 3 is a good default for daily |
 | `run.max_items_per_digest` | Cap on published items. Fewer is fine; padding is the failure mode |
 | `run.max_agent_fetches` | Web fetch budget per run. Drives cost and runtime |
-| `focus.themes`, `focus.geo_boost` | What scores well. Geo is a boost, not a filter |
+| `focus.topics`, `focus.geo_boost` | What scores well. Geo is a boost, not a filter |
 | `focus.mute_terms` | Hard drops in triage |
 | `scoring.min_score_to_publish` | The bar, out of 60 |
+| `delivery.digest_archive.formats` | Which digest files get written. `markdown` feeds Telegram and the vault, `json` feeds the site |
+| `web.build_on_run` | Rebuild the static site at the end of each run. Needs npm on the box |
 
 Sources are not in `config.json`. Each is one file in `sources/`: a JSON spec,
 plus a small Python module when the kind needs code. Add a ticker in
@@ -128,7 +159,7 @@ config can express.
 
 ## How it works
 
-`run.sh` does three things in order:
+`run.sh` does four things in order:
 
 1. `fetch.py` runs every enabled source in `sources/`. Sitemap sources are
    filtered by `lastmod` and path and deduped against `seen.json`; price
@@ -138,6 +169,8 @@ config can express.
    triages by title, fetches survivors, scores against the rubric, writes the
    digest and vault copy, updates `seen.json`.
 3. `notify.py` chunks the digest and posts it to Telegram.
+4. `npm run build` in `app/` prerenders the reader from the json sidecars, when
+   `web.build_on_run` is on. Last, and never fatal — the push is the job.
 
 The harness files the agent reads, in order: `AGENTS.md` (contract and file
 map), `docs/RULES.md` (hard constraints), `docs/OPPORTUNITIES.md` (signal taxonomy and

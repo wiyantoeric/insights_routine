@@ -37,4 +37,16 @@ if [ "$DRY" -eq 1 ]; then
 else
   python3 scripts/notify.py || echo "WARN: telegram push failed"
 fi
+
+# The site is a static projection of digests/*.json. Built last, on purpose:
+# it must never delay or fail the push, which is the routine's actual job.
+WEB="$(python3 -c 'import json;c=json.load(open("config.json")).get("web",{});print(c.get("dir","") if c.get("build_on_run") else "")')"
+if [ -n "$WEB" ]; then
+  if command -v npm >/dev/null 2>&1; then
+    echo "=== web build"
+    ( cd "$WEB" && { [ -d node_modules ] || npm ci; } && npm run build ) || echo "WARN: web build failed"
+  else
+    echo "WARN: web.build_on_run is on but npm is not on PATH"
+  fi
+fi
 echo "=== done $(date -u +%FT%TZ)"

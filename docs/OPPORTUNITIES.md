@@ -52,8 +52,8 @@ named. The report supplies the market sizing you would otherwise pay for.
 | Sector capex commentary (raised vs cut) | Rotation, ahead of the print |
 | M&A volume and valuation talk | Where consolidation is starting |
 | Supply chain / input cost warnings | Margin pressure downstream, one or two quarters out |
-| A theme called hot while the tape has not moved | The most valuable single pattern in this system — see below |
-| A theme dropped after months of coverage | Hype ending. Fade it |
+| A topic called hot while the tape has not moved | The most valuable single pattern in this system — see below |
+| A topic dropped after months of coverage | Hype ending. Fade it |
 
 **Narrative-vs-tape divergence.** This is why market data is in this repo. Four cases:
 
@@ -71,10 +71,10 @@ US 10Y yield, dollar index, gold, WTI. Flag any move beyond
 These need no fetching, only the candidate list. They are often the best item
 in the digest.
 
-- **Volume shift.** One firm goes from 1 to 5 pieces on a topic inside a month → they see budget. Track counts per theme per week.
+- **Volume shift.** One firm goes from 1 to 5 pieces on a topic inside a month → they see budget. Track counts per topic per week.
 - **Vocabulary migration.** "AI" → "generative AI" → "agentic AI" → "AI governance". Whichever term is climbing is where the next 12 months of spend goes. Whoever adopts the new term first sounds current in a pitch.
 - **Sequencing across firms.** One firm publishes, the other two follow within three weeks → consensus, you are already late. Only one firm and no followers after a month → either an edge or a dud; the tape decides which.
-- **Geography lag.** A theme mature in the US/UK feeds with no Indonesian or SEA equivalent → a 12-18 month arbitrage window. This is the single highest-value pattern for an Indonesia-based operator, and it costs nothing to spot.
+- **Geography lag.** A topic mature in the US/UK feeds with no Indonesian or SEA equivalent → a 12-18 month arbitrage window. This is the single highest-value pattern for an Indonesia-based operator, and it costs nothing to spot.
 - **Silence.** A firm that covered a topic monthly and then stops. Something changed.
 
 ## Scoring rubric
@@ -103,4 +103,4 @@ office openings, event promos, pure product marketing, anything already in
 - "Monitor developments" as an action. Not an action.
 - Treating a survey of executives as a fact about the world.
 - Rewriting the firm's abstract. If an item's *Signal* line could have been copied from the page, it added nothing.
-- Chasing whatever is loudest. The loudest theme is the most crowded one.
+- Chasing whatever is loudest. The loudest topic is the most crowded one.
