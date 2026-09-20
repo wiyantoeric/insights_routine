@@ -14,9 +14,9 @@ cron ──► scripts/run.sh
             │         kind=<other>  ──► sources/<kind>.py fetch()  ─┘ role=tape    ──► tape{id}
             │       interleave by source, cap ──► state/candidates.json
             │
-            ├─ 2. claude -p prompts/daily_scan.md       the agent, 3-6 min
+            ├─ 2. codex exec or claude -p              the agent, 3-6 min
             │       reads: config.json, docs/RULES.md, docs/OPPORTUNITIES.md, docs/WORKFLOWS.md, candidates.json
-            │       does:  triage ──► WebFetch survivors ──► score ──► write
+            │       does:  triage ──► fetch survivors ──► score ──► write
             │       writes: digests/YYYY-MM-DD.{md,json}, <vault_dir>/YYYY-MM/YYYY-MM-DD.md, state/seen.json
             │              formats gated by delivery.digest_archive.formats
             │
@@ -67,13 +67,15 @@ config.json  run behaviour only. Not sources. Read by everything, written by not
 | Debug an empty or stale site | `cd app && npm run check` — asserts the sidecar contract and names broken digests | |
 | Add a hard rule for the agent | `docs/RULES.md` | |
 | Change lookback, item cap, fetch budget, candidate cap | `config.json → run` | |
+| Change the default inference CLI | `config.json → agent.inference`; use `run.sh --inference` for one run | |
+| Change the Codex model or reasoning effort | `config.json → agent.codex_model` / `agent.codex_reasoning_effort` | personal Codex settings are ignored |
 | Change topic / geography focus / mute terms | `config.json → focus` | |
 | Change output paths | `config.json → paths` | |
 | Add Slack or another push target | `scripts/notify.py`: branch on `a.platform`, read `delivery.<name>` | `chat.sh` needs nothing |
 | Change Telegram chunking | `config.json → delivery.telegram`; logic is `notify.py::chunks()` | |
 | Test a source kind without hitting its API | `tests/test_fred.py` is the pattern: stub `<kind>.get`, assert the reading shape, per-series isolation, and that no secret reaches `errors[]` | |
 | Debug why a URL was not picked up | `python3 scripts/fetch.py`, read `state/candidates.json`; check `lastmod` vs lookback, then path filters, then `seen.json`, then whether interleave cut it | |
-| Debug why the agent scored something a certain way | `claude -r <session-id>` (first line `run.sh` prints) | |
+| Debug why the agent scored something a certain way | `codex exec resume <session-id> "explain your scoring"` or `claude -r <session-id>` (the run prints the id) | |
 | Force a full re-scan | empty `ids` in `state/seen.json` | |
 | Test delivery alone | `scripts/chat.sh --platform telegram "hi"` or `--file <md>` | |
 | Add a second routine (weekly synthesis…) | new section in `docs/WORKFLOWS.md`, new `prompts/` file, new `config.json` block, new cron line | do not fork `run.sh` |
@@ -98,11 +100,12 @@ A new source is a JSON file. A new *kind* of source is a Python file next to it.
 | `prompts/daily_scan.md` | the executed prompt; points at docs, does not repeat them |
 | `core/` | shared library, below |
 | `sources/` | one spec per source, plus implementations for non-builtin kinds |
-| `scripts/run.sh` | orchestrator. fetch → agent → notify. `--dry`. Streams agent tool calls |
+| `scripts/run.sh` | orchestrator. fetch → agent → notify. `--dry`, `--inference codex|claude`. Streams agent tool calls |
+| `scripts/codex_progress.py` | Codex JSONL progress. Logs reconnect notices and requires a completed turn before delivery |
 | `scripts/fetch.py` | source-agnostic ingestion loop + `interleave()`. `--demo` |
 | `scripts/notify.py` | Telegram. positional digest, `--text`, `--platform`. `--demo` |
 | `scripts/chat.sh` | delivery smoke test wrapper |
-| `tests/` | `unittest`, stdlib only. `test_fred.py` stubs the network; the live case runs only with a key present |
+| `tests/` | `unittest`, stdlib only. `test_fred.py` stubs the network; `test_run.py` stubs both agent CLIs and delivery |
 | `state/seen.json` | `{"ids":[…]}` published URL hashes. Agent appends |
 | `state/candidates.json` | per-run payload: `candidates[]`, `tape{}`, `errors[]` |
 | `digests/` | outputs, one `.md` and one `.json` per run. Gitignored |
@@ -190,7 +193,7 @@ product's page is filler. Cut it or replace it with a number.
 | Slack / email delivery | Telegram chosen | someone else needs the feed |
 | More firms / regulators | base loop first | one at a time, JSON only for sitemap sites |
 | Retry queue for 403s | one so far | it repeats |
-| Tests beyond `--demo`, `npm run check` and `tests/` | those cover the parsers, interleave, registry resolution, the sidecar contract, and the fred kind | logic outgrows them |
+| Tests beyond `--demo`, `npm run check` and `tests/` | those cover the parsers, interleave, registry resolution, the sidecar contract, the fred kind, and runner selection | logic outgrows them |
 | Auth on the site | it is localhost, or behind Cloudflare Access | it is served anywhere a stranger can reach |
 | Editing or annotating a digest from the site | the agent owns digests; a second writer means two sources of truth | never, unless the annotation lives outside `digests/` |
 | Tape charts with real numbers | `tape.readings` is null on the backfilled digests, so there is nothing to plot | a digest carries `readings`. The `Sparkline` component is already there |

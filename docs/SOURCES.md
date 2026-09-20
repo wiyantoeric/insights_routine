@@ -72,7 +72,7 @@ serves three firms today.
 Ingestion is hybrid on purpose: sitemaps carry `lastmod`, which is all "what is
 new since yesterday" needs, at one request per shard. The JS-rendered landing
 pages the operator originally bookmarked are in `config.json → agent.context_pages`
-for the agent to WebFetch when an item needs context; they are not ingestion.
+for the agent to fetch when an item needs context; they are not ingestion.
 
 ## Per-firm field notes (verified 2026-09-05)
 

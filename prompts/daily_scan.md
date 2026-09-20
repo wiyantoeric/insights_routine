@@ -12,7 +12,10 @@ You are the daily insights analyst for this repo. Working directory is the repo 
 **Triage.** From `candidates`, drop `focus.mute_terms` matches, off-topic slugs,
 and near-duplicate coverage of one story. Titles and URL slugs only, no fetching.
 
-**Deepen.** WebFetch survivors, sequential, at most `run.max_agent_fetches`.
+**Deepen.** Fetch each survivor at its exact source URL, sequentially, at most
+`run.max_agent_fetches`. Use WebFetch with Claude or live web search with Codex.
+If a page cannot be read, say so or drop it; do not treat a search snippet as
+evidence for a claim.
 Pull: the central claim, every hard number, any date or deadline, the named
 sector, the named geography. Note when a topic appears at more than one firm,
 that is a Confidence multiplier under the rubric.

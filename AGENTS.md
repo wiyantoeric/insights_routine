@@ -56,7 +56,7 @@ candidate list is small and the cost is not worth it.
 
 1. **Triage** — read `state/candidates.json`. Kill anything matching
    `focus.mute_terms` or obviously off-topic. Cheap, no fetches.
-2. **Deepen** — for surviving candidates only, WebFetch up to
+2. **Deepen** — for surviving candidates only, fetch up to
    `run.max_agent_fetches` pages. Extract claims, numbers, dates.
 3. **Score & write** — apply the `docs/OPPORTUNITIES.md` rubric, keep the top
    `run.max_items_per_digest`, write the digest.
@@ -64,16 +64,18 @@ candidate list is small and the cost is not worth it.
 ## Run
 
 ```bash
-./scripts/run.sh            # full daily run
+./scripts/run.sh            # full daily run, Codex by default
 ./scripts/run.sh --dry      # fetch + score, no Telegram push
+./scripts/run.sh --inference claude --dry  # use Claude for this run
 python3 scripts/fetch.py    # ingestion only, inspect state/candidates.json
 ```
 
 Watching a run. `run.sh` streams one line per agent tool call, so a manual run
 shows progress in the terminal and a cron run is followed with
-`tail -f state/run.log`. `pgrep -fl "claude -p"` says whether the agent is
-still alive. The stream prints the session id first; `claude -r <id>` reopens
-that finished run interactively to ask it why it scored something the way it did.
+`tail -f state/run.log`. `pgrep -fl 'codex.*exec|claude -p'` says whether the
+agent is still alive. The stream prints the session id first; use
+`codex exec resume <id> "explain your scoring"` or `claude -r <id>` to ask why it
+scored something the way it did.
 
 ## Invariants
 

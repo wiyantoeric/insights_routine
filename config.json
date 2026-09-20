@@ -88,8 +88,11 @@
     "dir": "app"
   },
   "agent": {
+    "inference": "codex",
+    "codex_model": "gpt-6-astra",
+    "codex_reasoning_effort": "low",
     "prompt_file": "prompts/daily_scan.md",
-    "allowed_tools": [
+    "claude_allowed_tools": [
       "Read",
       "Write",
       "WebFetch",
@@ -113,6 +116,6 @@
         "note": "PwC library landing"
       }
     ],
-    "_note_context_pages": "JS-heavy landing pages the agent may WebFetch for context. Not ingestion; ingestion is sources/."
+    "_note_context_pages": "JS-heavy landing pages the agent may fetch for context. Not ingestion; ingestion is sources/."
   }
 }

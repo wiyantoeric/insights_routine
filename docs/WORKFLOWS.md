@@ -27,7 +27,7 @@ under `errors` and continue.
 Read candidates. Drop `mute_terms` matches, off-topic titles, duplicate
 coverage of one story. Cheap pass, titles and URL slugs only.
 
-### 3. Deepen (agent, WebFetch)
+### 3. Deepen (agent, source-page fetch)
 
 For survivors, up to `run.max_agent_fetches` pages, sequential. Extract:
 claim, hard numbers, any date or deadline, named sector, named geography.

@@ -6,31 +6,96 @@
 # Log by redirecting in the cron line instead.
 set -uo pipefail
 cd "$(dirname "$0")/.." || exit 1
-# cron and launchd start with a bare PATH; claude lives in ~/.local/bin
-export PATH="$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:$PATH"
-# headless box: claude authenticates via ANTHROPIC_API_KEY from .env
-if [ -f .env ]; then set -a; . ./.env; set +a; fi
+# cron and launchd start with a bare PATH; both agent CLIs may live in ~/.local/bin
+export PATH="$PATH:$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin"
+
+usage() {
+  echo "Usage: $0 [--dry] [--inference codex|claude]"
+}
 
 DRY=0
-[ "${1:-}" = "--dry" ] && DRY=1
-echo "=== run $(date -u +%FT%TZ) dry=$DRY"
+INFERENCE=""
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --dry) DRY=1 ;;
+    --inference)
+      if [ "$#" -lt 2 ]; then
+        echo "ERROR: --inference needs codex or claude" >&2
+        usage >&2
+        exit 2
+      fi
+      INFERENCE="$2"
+      shift ;;
+    --inference=*) INFERENCE="${1#--inference=}" ;;
+    -h|--help) usage; exit 0 ;;
+    *) echo "ERROR: unknown argument: $1" >&2; usage >&2; exit 2 ;;
+  esac
+  shift
+done
+
+if [ -z "$INFERENCE" ]; then
+  INFERENCE="$(jq -er '.agent.inference' config.json)" || exit 1
+fi
+case "$INFERENCE" in
+  codex|claude) ;;
+  *) echo "ERROR: inference must be codex or claude: $INFERENCE" >&2; exit 2 ;;
+esac
+PROMPT_FILE="$(jq -er '.agent.prompt_file' config.json)" || exit 1
+if [ ! -f "$PROMPT_FILE" ]; then
+  echo "ERROR: prompt file not found: $PROMPT_FILE" >&2
+  exit 1
+fi
+if ! command -v "$INFERENCE" >/dev/null 2>&1; then
+  echo "ERROR: $INFERENCE is not on PATH" >&2
+  exit 1
+fi
+
+# Keep inference credentials out of the fetch, notification, and build steps.
+if [ -f .env ]; then set -a; . ./.env; set +a; fi
+CODEX_KEY="${CODEX_API_KEY:-}"
+CLAUDE_KEY="${ANTHROPIC_API_KEY:-}"
+unset CODEX_API_KEY ANTHROPIC_API_KEY
+echo "=== run $(date -u +%FT%TZ) dry=$DRY inference=$INFERENCE"
 
 python3 scripts/fetch.py || echo "WARN: fetch had failures, continuing"
 
-TOOLS="$(python3 -c 'import json;print(",".join(json.load(open("config.json"))["agent"]["allowed_tools"]))')"
-# stream-json + jq: one line per tool call as it happens, so a silent 5-minute
-# headless run is watchable in the terminal or via `tail -f state/run.log`.
-claude -p "$(cat prompts/daily_scan.md)" \
-  --allowedTools "$TOOLS" \
-  --permission-mode acceptEdits \
-  --verbose --output-format stream-json \
-  | jq -r --unbuffered '
-      if .type=="system" and .subtype=="init" then "agent session \(.session_id)"
-      elif .type=="assistant" then (.message.content[]? | select(.type=="tool_use")
-        | "  \(.name)  \((.input.url // .input.file_path // .input.command // "") | .[0:100])")
-      elif .type=="result" then "agent done: \(.subtype // "?")  turns=\(.num_turns // "?")  cost=$\(.total_cost_usd // "?")"
-      else empty end' \
-  || { echo "ERROR: agent run failed"; exit 1; }
+# Both CLIs stream JSON events, with different event shapes. Keep one progress
+# line per tool call so terminal and cron runs remain watchable.
+if [ "$INFERENCE" = "claude" ]; then
+  TOOLS="$(jq -er '.agent.claude_allowed_tools | join(",")' config.json)" || exit 1
+  ( if [ -n "$CLAUDE_KEY" ]; then export ANTHROPIC_API_KEY="$CLAUDE_KEY"; fi
+    claude -p "$(cat "$PROMPT_FILE")" \
+      --allowedTools "$TOOLS" \
+      --permission-mode acceptEdits \
+      --verbose --output-format stream-json
+  ) \
+    | jq -r --unbuffered '
+        if .type=="system" and .subtype=="init" then "agent session \(.session_id)"
+        elif .type=="assistant" then (.message.content[]? | select(.type=="tool_use")
+          | "  \(.name)  \((.input.url // .input.file_path // .input.command // "") | .[0:100])")
+        elif .type=="result" then
+          if .subtype=="success" then "agent done: \(.subtype)  turns=\(.num_turns // "?")  cost=$\(.total_cost_usd // "?")"
+          else error("claude result: \(.subtype // "unknown")") end
+        else empty end' \
+    || { echo "ERROR: claude run failed"; exit 1; }
+else
+  CODEX_MODEL="$(jq -er '.agent.codex_model' config.json)" || exit 1
+  CODEX_REASONING="$(jq -ce '.agent.codex_reasoning_effort' config.json)" || exit 1
+  CODEX_ARGS=(--json)
+  VAULT_DIR="$(python3 -c 'import json, os; print(os.path.realpath(json.load(open("config.json"))["paths"]["vault_dir"]))')" || exit 1
+  case "$VAULT_DIR" in
+    "$PWD"|"$PWD"/*) ;;
+    *) mkdir -p "$VAULT_DIR" || exit 1; CODEX_ARGS=(--add-dir "$VAULT_DIR" --json) ;;
+  esac
+  ( if [ -n "$CODEX_KEY" ]; then export CODEX_API_KEY="$CODEX_KEY"; fi
+    codex -a never --search --disable plugins --disable apps exec \
+      --ignore-user-config --sandbox workspace-write \
+      --model "$CODEX_MODEL" -c "model_reasoning_effort=$CODEX_REASONING" \
+      "${CODEX_ARGS[@]}" - < "$PROMPT_FILE"
+  ) \
+    | python3 scripts/codex_progress.py \
+    || { echo "ERROR: codex run failed"; exit 1; }
+fi
 
 if [ "$DRY" -eq 1 ]; then
   echo "dry run, skipping push"

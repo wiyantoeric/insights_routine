@@ -4,14 +4,15 @@ Daily opportunity scanner. Pulls what KPMG, Deloitte and PwC published in the
 last few days, pairs it with live market prices, scores every item against a
 written rubric, and pushes the top 3-5 to Telegram and an Obsidian vault.
 
-Runs locally as a Claude Code headless session on a cron schedule. The routine
-needs nothing beyond system Python, `jq`, and the `claude` CLI. The optional
-web reader in `app/` is the only thing that wants Node, and only to build.
+Runs locally as a headless Codex session on a cron schedule. Claude Code is an
+optional inference backend. The routine needs system Python, `jq`, and the
+selected CLI. The optional web reader in `app/` needs Node only to build.
 
 ## Prerequisites
 
 - macOS with `python3` (system 3.9 is fine) and `jq` (`/usr/bin/jq` ships with macOS)
-- [Claude Code](https://claude.com/claude-code) CLI on `PATH`, logged in
+- [Codex CLI](https://github.com/openai/codex) on `PATH`, logged in or given `CODEX_API_KEY`
+- Optional: [Claude Code](https://claude.com/claude-code) CLI for `--inference claude`
 - A Telegram bot token and your chat id ([@BotFather](https://t.me/BotFather) for the token, [@userinfobot](https://t.me/userinfobot) for the id)
 - Optional: an Obsidian vault folder
 - Optional: Node 20+ if you want the web reader (`app/`). The routine itself never needs it
@@ -38,9 +39,13 @@ scripts/chat.sh --platform telegram "hi there"
 
 ```bash
 ./scripts/run.sh --dry
+# or: ./scripts/run.sh --inference claude --dry
 ```
 
-Fetches candidates, runs the agent, writes the digest, skips the Telegram push.
+Fetches candidates, runs Codex by default, writes the digest, skips the Telegram
+push. `--inference codex|claude` overrides `agent.inference` in `config.json` for
+one run; the configured default is `codex`. The flag and `--dry` work in either
+order. Codex uses live web search for each surviving candidate's exact URL.
 Progress streams to the terminal one line per agent action. Expect 3-6
 minutes and roughly 12 web fetches.
 
@@ -85,20 +90,26 @@ scripts/chat.sh --platform telegram --file digests/$(date +%F).md
 
 ## Deploy on a VPS
 
-Any Linux box with `python3` ≥ 3.9, `jq`, and Node for the `claude` CLI. The
-same Node builds the web reader, which is why `web.build_on_run` defaults on.
+Any Linux box with `python3` ≥ 3.9, `jq`, and the selected agent CLI. Install
+Node if you want the web reader built on each run (`web.build_on_run` is on by
+default).
 
 ```bash
 sudo apt install -y jq python3 git
-curl -fsSL https://claude.ai/install.sh | sh          # claude CLI, lands in ~/.local/bin
+curl -fsSL https://chatgpt.com/codex/install.sh | sh   # Codex CLI, lands in ~/.local/bin
 git clone <this repo> ~/insights_routine && cd ~/insights_routine
-cp .env.example .env                                   # ANTHROPIC_API_KEY, TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID
+cp .env.example .env                                   # uncomment CODEX_API_KEY, set it and Telegram credentials
 scripts/chat.sh --platform telegram "vps up"           # delivery works?
 ./scripts/run.sh --dry                                 # full pipeline once, no push
 ```
 
-`run.sh` sources `.env`, so `claude` finds `ANTHROPIC_API_KEY` without an
-interactive login, and exports `~/.local/bin` onto PATH for cron.
+`run.sh` sources `.env`, so Codex can use `CODEX_API_KEY` without an interactive
+login. A saved Codex CLI login also works. For the optional Claude path, install
+its CLI and set `ANTHROPIC_API_KEY`. The script adds `~/.local/bin` to PATH for
+cron. The Codex run ignores personal CLI configuration and disables plugins and
+apps, so unrelated MCP connections do not start. Authentication still uses the
+normal Codex login or `CODEX_API_KEY`; model settings in `~/.codex/config.toml`
+do not apply to this routine.
 
 Crontab (`crontab -e`). Server clocks are usually UTC; 07:00 Jakarta is 00:00 UTC:
 
@@ -110,9 +121,9 @@ MAILTO=""
 
 If the server's timezone is set to Asia/Jakarta, use `0 7` instead. Check with `date`.
 
-Follow a run with `tail -f state/run.log`. Each run prints its session id
-first; `claude -r <session-id>` reopens it to ask why it scored something the
-way it did. Keep `state/run.log` in check with a weekly
+Follow a run with `tail -f state/run.log`. Each run prints its session id first.
+Use `codex exec resume <session-id> "explain your scoring"` for a Codex run or
+`claude -r <session-id>` for a Claude run. Keep `state/run.log` in check with a weekly
 `find state -name run.log -size +5M -exec truncate -s 0 {} \;` cron line, or logrotate.
 
 The vault is written to `vaults/` inside the repo. On a server nobody opens
@@ -125,7 +136,7 @@ a git remote), or point `paths.vault_dir` at a mounted share.
 python3 scripts/fetch.py                       # ingestion only, inspect state/candidates.json
 python3 scripts/fetch.py --demo                # parser + source registry self-check
 (cd app && npm run check)                      # sidecar contract + markdown renderer self-checks
-python3 -m unittest discover -s tests          # source-kind tests; the fred live case needs a key
+python3 -m unittest discover -s tests          # runner and source tests; the fred live case needs a key
 python3 scripts/notify.py                      # push newest digest
 scripts/chat.sh --platform telegram "text"     # push arbitrary text
 scripts/chat.sh --platform telegram --file f   # push any markdown file
@@ -142,6 +153,10 @@ Every knob is in `config.json`. The ones you will actually touch:
 | `run.lookback_days` | How far back "new" reaches. 3 is a good default for daily |
 | `run.max_items_per_digest` | Cap on published items. Fewer is fine; padding is the failure mode |
 | `run.max_agent_fetches` | Web fetch budget per run. Drives cost and runtime |
+| `agent.inference` | Default backend: `codex` or `claude`. `--inference` overrides it once |
+| `agent.codex_model` | Codex model, currently `gpt-6-astra`; passed explicitly to the CLI |
+| `agent.codex_reasoning_effort` | Codex reasoning effort, currently `low`; overrides CLI defaults |
+| `agent.claude_allowed_tools` | Tool allowlist for the optional Claude backend |
 | `focus.topics`, `focus.geo_boost` | What scores well. Geo is a boost, not a filter |
 | `focus.mute_terms` | Hard drops in triage |
 | `scoring.min_score_to_publish` | The bar, out of 60 |
@@ -165,7 +180,7 @@ config can express.
    filtered by `lastmod` and path and deduped against `seen.json`; price
    sources return the day's tape. Results are interleaved by source, capped,
    and written to `state/candidates.json`. Deterministic, no LLM, ~15 seconds.
-2. `claude -p` runs `prompts/daily_scan.md`. The agent reads the harness files,
+2. `codex exec` (or `claude -p`) runs `prompts/daily_scan.md`. The agent reads the harness files,
    triages by title, fetches survivors, scores against the rubric, writes the
    digest and vault copy, updates `seen.json`.
 3. `notify.py` chunks the digest and posts it to Telegram.
@@ -204,3 +219,10 @@ or `cd app/build && python3 -m http.server 8080`.
 
 **Agent run costs too much.** Lower `run.max_agent_fetches` and
 `run.max_candidates_to_agent` in config. Yesterday's run was ~30 turns.
+
+**Codex prints reconnect notices or hits a usage limit.** The runner logs
+reconnects and waits for a completed turn. If Codex stops before completion,
+the run exits before Telegram delivery. A saved ChatGPT login uses that
+account's Codex allowance; set `CODEX_API_KEY` in `.env` for API-key automation.
+Manual terminal runs are not appended to `state/run.log`; the cron line above
+redirects its output there.
